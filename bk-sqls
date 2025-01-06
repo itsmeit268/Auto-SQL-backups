@@ -1,0 +1,118 @@
+#!/bin/bash
+
+# Cấu hình các biến
+BACKUP_DIR="/var/backups/db"               # Đường dẫn thư mục sao lưu
+MYSQL_USER="root"                          # Tên người dùng MySQL
+MYSQL_PASSWORD=""                          # Mật khẩu MySQL
+DATE=$(date +%F)                           # Định dạng ngày (ví dụ: 2024-11-26)
+DAY_OF_WEEK=$(date +%u)                    # Ngày trong tuần (1 = Thứ 2, 7 = Chủ nhật)
+MONTH=$(date +%m)                          # Tháng (01 - 12)
+YEAR=$(date +%Y)                           # Năm
+WEEK=$(date +%U)                           # Tuần trong năm
+
+# Thiết lập biến môi trường cho MySQL để tránh nhập mật khẩu thủ công
+export MYSQL_PWD=$MYSQL_PASSWORD
+
+# Tạo thư mục sao lưu nếu không có
+mkdir -p $BACKUP_DIR/daily
+mkdir -p $BACKUP_DIR/weekly
+mkdir -p $BACKUP_DIR/monthly
+
+# Lấy danh sách tất cả các cơ sở dữ liệu, loại trừ mysql, information_schema, performance_schema, sys
+DATABASES=$(mysql -u$MYSQL_USER -e "SHOW DATABASES;" | grep -Ev "(Database|mysql|information_schema|performance_schema|sys)")
+
+# Tạo danh sách các file sao lưu thành công và lỗi
+SUCCESSFUL_BACKUPS=""
+FAILED_BACKUPS=""
+ATTACHMENT_FILES=""
+
+# Hàm sao lưu hàng ngày
+backup_daily() {
+    for DB in $DATABASES; do
+        # Tạo tên file sao lưu cho mỗi cơ sở dữ liệu
+        BACKUP_FILE="$DATE"_"$DB.sql.gz"
+        
+        # Sao lưu cơ sở dữ liệu và nén vào tệp .sql.gz
+        if mysqldump -u$MYSQL_USER $DB | gzip > $BACKUP_DIR/daily/$BACKUP_FILE; then
+            SUCCESSFUL_BACKUPS="$SUCCESSFUL_BACKUPS\n$BACKUP_FILE"
+            ATTACHMENT_FILES="$ATTACHMENT_FILES $BACKUP_DIR/daily/$BACKUP_FILE"   # Thêm vào danh sách các tệp đính kèm
+        else
+            FAILED_BACKUPS="$FAILED_BACKUPS\n$DB - Daily backup failed"
+        fi
+    done
+}
+
+# Hàm sao lưu hàng tuần
+backup_weekly() {
+    for DB in $DATABASES; do
+        # Tạo tên file sao lưu
+        BACKUP_FILE="$DATE"_"$DB.sql.gz"
+        
+        # Sao lưu cơ sở dữ liệu và nén vào tệp .sql.gz
+        if mysqldump -u$MYSQL_USER $DB | gzip > $BACKUP_DIR/weekly/$BACKUP_FILE; then
+            SUCCESSFUL_BACKUPS="$SUCCESSFUL_BACKUPS\n$BACKUP_FILE"
+        else
+            FAILED_BACKUPS="$FAILED_BACKUPS\n$DB - Weekly backup failed"
+        fi
+    done
+}
+
+# Hàm sao lưu hàng tháng
+backup_monthly() {
+    for DB in $DATABASES; do
+        # Tạo tên file sao lưu
+        BACKUP_FILE="$DATE"_"$DB.sql.gz"
+        
+        # Sao lưu cơ sở dữ liệu và nén vào tệp .sql.gz
+        if mysqldump -u$MYSQL_USER $DB | gzip > $BACKUP_DIR/monthly/$BACKUP_FILE; then
+            SUCCESSFUL_BACKUPS="$SUCCESSFUL_BACKUPS\n$BACKUP_FILE"
+        else
+            FAILED_BACKUPS="$FAILED_BACKUPS\n$DB - Monthly backup failed"
+        fi
+    done
+}
+
+# Hàm xoá bản sao lưu cũ (giữ tối đa 30 bản sao lưu)
+cleanup_old_backups() {
+    # Xoá bản sao lưu cũ hơn 30 ngày (hàng ngày)
+    if [ "$(ls -A $BACKUP_DIR/daily)" ]; then
+        find $BACKUP_DIR/daily/* -type f -mtime +30 -exec rm -f {} \;
+    fi
+
+    # Xoá bản sao lưu cũ hơn 12 tuần (hàng tuần)
+    if [ "$(ls -A $BACKUP_DIR/weekly)" ]; then
+        find $BACKUP_DIR/weekly/* -type f -mtime +84 -exec rm -f {} \; # 12 tuần = 84 ngày
+    fi
+
+    # Xoá bản sao lưu cũ hơn 12 tháng (hàng tháng)
+    if [ "$(ls -A $BACKUP_DIR/monthly)" ]; then
+        find $BACKUP_DIR/monthly/* -type f -mtime +365 -exec rm -f {} \; # 12 tháng = 365 ngày
+    fi
+}
+
+# Gọi các hàm sao lưu
+backup_daily        # Sao lưu hàng ngày
+if [ "$DAY_OF_WEEK" -eq 1 ]; then    # Nếu là ngày đầu tuần (thứ 2), sao lưu hàng tuần
+    backup_weekly
+fi
+
+if [ "$DAY_OF_WEEK" -eq 1 ] && [ "$MONTH" -eq 1 ]; then    # Nếu là ngày đầu tháng và ngày đầu tuần, sao lưu hàng tháng
+    backup_monthly
+fi
+
+# Gọi hàm dọn dẹp bản sao lưu cũ
+cleanup_old_backups
+
+# Kiểm tra nếu không có cơ sở dữ liệu sao lưu lỗi, thay bằng "No failed backups"
+if [ -z "$FAILED_BACKUPS" ]; then
+    FAILED_BACKUPS="No failed backups"
+fi
+
+EMAIL_FROM="buivanloi.2010@gmail.com"      # Địa chỉ email gửi thông báo
+EMAIL_TO="arriveddev.bz@gmail.com"         # Địa chỉ email nhận thông báo
+SENDER_NAME="Admin"                        # Tên người gửi
+SUBJECT="MySQL Backup Report - $DATE"
+BODY="Hello,\n\nPlease find attached the MySQL backup files for $DATE.\n\nSuccessful backups:\n$SUCCESSFUL_BACKUPS\n\nFailed backups:\n$FAILED_BACKUPS\n\nBest regards,\nMySQL Backup Script"
+
+# Gửi email với tên người gửi được định nghĩa
+echo -e "$BODY" | mutt -s "$SUBJECT" -e "set from=\"$SENDER_NAME <$EMAIL_FROM>\"" -a $ATTACHMENT_FILES -- $EMAIL_TO
