@@ -30,6 +30,6 @@ A tool for automating SQL database backups and sending email notifications with 
 
 ---
 Contact support: 
-Email: buivanloi.2010@gmail.com
-Facebook: https://facebook.com/itsmeit.co
-Website: https://itsmeit.co/
+- Email: buivanloi.2010@gmail.com
+- Facebook: https://facebook.com/itsmeit.co
+- Website: https://itsmeit.co/
