@@ -26,6 +26,10 @@ A tool for automating SQL database backups and sending email notifications with 
 - After completing the setup, you can test the script by running the following command in the terminal:
   `sudo /etc/cron.daily/bk-sqls`
 
+## Database Restoration
+- The backup file is in the *.sql.gz format. You need to extract it first, then import it into the database to restore the data.
+  `gunzip backup.sql.gz`
+
 ## Notes:
 - Modify the sender and recipient email settings as needed.
 - The server must have a working **sendmail** service and an active **cronjob**.
