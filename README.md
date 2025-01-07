@@ -29,4 +29,7 @@ A tool for automating SQL database backups and sending email notifications with 
 - SQL backups will be automatically created on a daily, weekly, or monthly basis in the default directory: `/var/backups/db`.
 
 ---
-For further assistance or troubleshooting, refer to the documentation or contact support.
+Contact support: 
+Email: buivanloi.2010@gmail.com
+Facebook: https://facebook.com/itsmeit.co
+Website: https://itsmeit.co/
