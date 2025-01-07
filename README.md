@@ -1,5 +1,6 @@
 # SQL Backup Tool for Linux
 A tool for automating SQL database backups and sending email notifications with attachments.
+![Auto Backup SQL](https://itsmeit.co/wp-content/uploads/2025/01/auto-back-up-sql.png)
 
 ## Requirements:
 - **Linux** or Linux-based distributions
