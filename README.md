@@ -1,24 +1,32 @@
-# bk-sqls
-Backup SQL: Chức năng tự động sao lưu database và gửi mail đính kèm file.
+# SQL Backup Tool for Linux
+A tool for automating SQL database backups and sending email notifications with attachments.
 
-Cách sử dụng:
+## Requirements:
+- **Linux** or Linux-based distributions
+- **Mail service**: Sendmail, Exim4, or Postfix (required if sending email attachments)
 
-Support: 
-1. Linux hoặc các bản phân phối dựa trên Linux
-2. Sendmail, exim4, hoặc postfix (nếu cần gửi đính kèm file)   
+## Installation:
 
-Cách cài đặt:
---- Thủ công
-1. Tải về file bk-sqls
-2. Tuỳ chỉnh thông tin như đường dẫn để sao lưu, email .v.v
-3. Tải file bk-sqls lên thư mục /etc/cron.daily
-2. Chạy lệnh phân quyền: sudo chmod +x /etc/cron.daily/bk-sqls
+### Manual Installation
+1. Download the `bk-sqls` file.
+2. Customize the configuration (e.g., backup path, email settings, etc.).
+3. Upload the `bk-sqls` file to `/etc/cron.daily`.
+4. Set execute permission:  
+   `sudo chmod +x /etc/cron.daily/bk-sqls`
 
---- Tự động
-1. Tải về file zip và giải nén
-2. Chạy sh install.sh từ terminal (cần quyền sudo hoặc root)
-3. Làm theo các bước hiển thị trên terminal
+### Automated Installation
+1. Download and extract the ZIP file.
+2. Navigate to the extracted directory and set execute permission for the installer:  
+   `sudo chmod +x install.sh`
+3. Run the installer with sudo:  
+   `sudo ./install.sh`
+4. Follow the on-screen instructions in the terminal to complete the setup.
 
-Note: 
-Sửa thông tin email gửi và nhận, server phải được cài đặt sendmail và cronjob hoạt động.
-Các file sql được sao lưu tự động hàng ngày/tuần/tháng trong thư mục mặc định /var/backups/db
+
+## Notes:
+- Modify the sender and recipient email settings as needed.
+- The server must have a working **sendmail** service and an active **cronjob**.
+- SQL backups will be automatically created on a daily, weekly, or monthly basis in the default directory: `/var/backups/db`.
+
+---
+For further assistance or troubleshooting, refer to the documentation or contact support.
