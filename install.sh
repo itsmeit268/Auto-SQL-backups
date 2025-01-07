@@ -29,7 +29,8 @@ done
 echo "Backup directory is ready at: $BACKUP_DIR"
 
 # Kiểm tra các công cụ gửi mail phổ biến
-echo "\nStep 2: Checking for Mail Services"
+echo ""
+echo "Step 2: Checking for Mail Services"
 
 MAIL_SERVICE=""
 
@@ -73,7 +74,8 @@ if [ -n "$MAIL_SERVICE" ]; then
 
   # Nếu người dùng chọn gửi email, yêu cầu cấu hình thêm
   if [ "$EMAIL_OPTION" = "attachments" ] || [ "$EMAIL_OPTION" = "no_attachments" ]; then
-    echo "\nStep 3: Configure Email Settings"
+    echo ""
+    echo "Step 3: Configure Email Settings"
     read -p "Enter the recipient's email address: " EMAIL_TO
     EMAIL_TO=$(echo "$EMAIL_TO" | xargs)
     while ! is_valid_email "$EMAIL_TO"; do
@@ -86,10 +88,13 @@ if [ -n "$MAIL_SERVICE" ]; then
     SENDER_NAME=$(echo "$SENDER_NAME" | xargs)
     SENDER_NAME=${SENDER_NAME:-Admin}
 
-    echo "Email configuration completed:\n"
+    echo "Email configuration completed:"
+    echo ""
     echo "  Sender Name: $SENDER_NAME"
     echo "  Recipient: $EMAIL_TO"
   else
+    echo ""
+    echo "Step 3: Configure Email Settings"
     echo "Email configuration skipped."
     EMAIL_TO=""
     SENDER_NAME=""
@@ -100,20 +105,22 @@ else
   SENDER_NAME=""
 fi
 
-echo "\nStep 4: Configure Backup Script in cron.daily"
+echo ""
+echo "Step 4: Configure Backup Script in cron.daily"
 # Cấu hình script backup trong cron.daily
 CRON_DIR="/etc/cron.daily/"
 CRON_FILE="${CRON_DIR}bk-sqls"
-cp ./bk-sqls "$CRON_DIR"
-chmod +x "$CRON_FILE"
+sudo cp ./bk-sqls "$CRON_DIR"
+sudo chmod +x "$CRON_FILE"
 echo "Backup script copied to $CRON_FILE and set as executable."
 
 # Cập nhật cấu hình trong file script
-echo "\nStep 5: Configuring Backup Script... "
+echo ""
+echo "Step 5: Configuring Backup Script... "
 sed -i "s|^BACKUP_DIR=.*|BACKUP_DIR=\"$BACKUP_DIR\"|" "$CRON_FILE"
 sed -i "s|^EMAIL_TO=.*|EMAIL_TO=\"$EMAIL_TO\"|" "$CRON_FILE"
 sed -i "s|^SENDER_NAME=.*|SENDER_NAME=\"$SENDER_NAME\"|" "$CRON_FILE"
 sed -i "s|^EMAIL_OPTION=.*|EMAIL_OPTION=\"$EMAIL_OPTION\"|" "$CRON_FILE"
 
 # Hoàn tất
-echo "\nSetup completed! The backup script is now scheduled to run daily."
+echo "Setup completed! All database backups are now scheduled to run daily."
