@@ -18,15 +18,15 @@ A tool for automating SQL database backups and sending email notifications with 
 
 ### Automated Installation
 1. Download and extract the ZIP file.
-2. Navigate to the extracted directory and set execute permission for the installer:  
+2. Navigate to the extracted directory and set execute permission for the installer:
    `sudo chmod +x install.sh`
-3. Run the installer with sudo:  
+3. Run the installer with sudo:
    `sudo ./install.sh`
 4. Follow the on-screen instructions in the terminal to complete the setup.
 
 ## Test Script
-After completing the setup, you can test the script by running the following command in the terminal:
-   `sudo /etc/cron.daily/bk-sqls`
+- After completing the setup, you can test the script by running the following command in the terminal:
+  `sudo /etc/cron.daily/bk-sqls`
 
 ## Notes:
 - Modify the sender and recipient email settings as needed.
