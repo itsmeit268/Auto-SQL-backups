@@ -22,6 +22,9 @@ A tool for automating SQL database backups and sending email notifications with 
    `sudo ./install.sh`
 4. Follow the on-screen instructions in the terminal to complete the setup.
 
+## Test Script
+After completing the setup, you can test the script by running the following command in the terminal:
+   `/etc/cron.daily/bk-sqls`
 
 ## Notes:
 - Modify the sender and recipient email settings as needed.
