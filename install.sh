@@ -1,16 +1,5 @@
 #!/bin/bash
 
-# Hàm kiểm tra định dạng email hợp lệ
-is_valid_email() {
-  local email="$1"
-  echo "$email" | grep -E -q "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-  if [ $? -eq 0 ]; then
-    return 0 # Đúng định dạng email
-  else
-    return 1 # Sai định dạng email
-  fi
-}
-
 # Bắt đầu cấu hình
 echo "Step 1: Backup Storage Path (default: /var/backups/db)"
 while true; do
@@ -77,11 +66,20 @@ if [ -n "$MAIL_SERVICE" ]; then
     echo ""
     echo "Step 3: Configure Email Settings"
     read -p "Enter the recipient's email address: " EMAIL_TO
-    EMAIL_TO=$(echo "$EMAIL_TO" | xargs)
+
+    # Hàm kiểm tra định dạng email hợp lệ
+    is_valid_email() {
+      local email="$1"
+      echo "$email" | grep -E -q "^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$"
+      return $? # Trả về mã thoát của grep (0 nếu hợp lệ, 1 nếu không hợp lệ)
+    }
+
+    EMAIL_TO=$(echo "$EMAIL_TO" | tr -cd '\11\12\15\40-\176')
+
     while ! is_valid_email "$EMAIL_TO"; do
       echo "Invalid email format. Please enter a valid recipient's email address."
       read -p "Enter the recipient's email address: " EMAIL_TO
-      EMAIL_TO=$(echo "$EMAIL_TO" | xargs)
+      EMAIL_TO=$(echo "$EMAIL_TO" | tr -cd '\11\12\15\40-\176')
     done
 
     read -p "Enter the sender's name (default: Admin): " SENDER_NAME
