@@ -1,20 +1,20 @@
 # Backup directory path
-BACKUP_DIR="/var/backups/db"
+#BACKUP_DIR="/var/backups/db"
 
 # MySQL username
-MYSQL_USER="root"
+#MYSQL_USER="root"
 
 # MySQL password
-MYSQL_PASSWORD=""
+#MYSQL_PASSWORD=""
 
 # Databases to be excluded from backup
-CONFIG_DB_EXCLUDE="mysql|information_schema|performance_schema|sys|test"
+#CONFIG_DB_EXCLUDE="mysql|information_schema|performance_schema|sys|test"
 
 # Email option: attachments, no_attachments, no_email
-EMAIL_OPTION="no_email"
+#EMAIL_OPTION="no_email"
 
 # Sender name for email notifications
-SENDER_NAME="Admin"
+#SENDER_NAME=""
 
 # Email address to receive notifications
-EMAIL_TO=""
+#EMAIL_TO=""

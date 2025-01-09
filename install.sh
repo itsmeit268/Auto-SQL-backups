@@ -112,25 +112,33 @@ sudo cp ./runsqlbackup "$CRON_DIR"
 sudo chmod +x "$CRON_FILE"
 echo "Backup script copied to $CRON_FILE and set as executable."
 
-
 # Copy file cấu hình
 CONFIG_DIR="/etc/automysqlbackup/"
 CONFIG_FILE="${CONFIG_DIR}conf.d/main.cnf"
 CUSTOM_FILE="${CONFIG_DIR}my-config.cnf"
-sudo mkdir -p ${CONFIG_DIR} && sudo mkdir -p "${CONFIG_DIR}conf.d"
-sudo cp ./conf.d/main.cnf "$CONFIG_FILE" && sudo cp ./conf.d/main.cnf "$CUSTOM_FILE"
+sudo mkdir -p ${CONFIG_DIR}
+sudo mkdir -p "${CONFIG_DIR}conf.d"
+sudo cp ./conf.d/main.cnf "$CONFIG_FILE"
+sudo cp ./my-config.cnf "$CUSTOM_FILE"
 sudo cp ./sendmail "${CONFIG_DIR}/sendmail"
 
 # Cập nhật cấu hình trong file script
 echo ""
 echo "Step 5: Configuring Backup Script... "
-sed -i '2i source "/etc/automysqlbackup/conf.d/main.cnf"' "$CUSTOM_FILE"
-sed -i "s|^BACKUP_DIR=.*|BACKUP_DIR=\"$BACKUP_DIR\"|" "$CUSTOM_FILE"
-sed -i "s|^EMAIL_TO=.*|EMAIL_TO=\"$EMAIL_TO\"|" "$CUSTOM_FILE"
-sed -i "s|^SENDER_NAME=.*|SENDER_NAME=\"$SENDER_NAME\"|" "$CUSTOM_FILE"
-sed -i "s|^EMAIL_OPTION=.*|EMAIL_OPTION=\"$EMAIL_OPTION\"|" "$CUSTOM_FILE"
 
-# Hoàn tất
+if [ "$BACKUP_DIR" != "/var/backups/db" ]; then
+  sed -i "s|^#\?BACKUP_DIR=.*|BACKUP_DIR=\"$BACKUP_DIR\"|" "$CUSTOM_FILE"
+fi
+
+sed -i "s|^#\?EMAIL_TO=.*|EMAIL_TO=\"$EMAIL_TO\"|" "$CUSTOM_FILE"
+sed -i "s|^#\?SENDER_NAME=.*|SENDER_NAME=\"$SENDER_NAME\"|" "$CUSTOM_FILE"
+sed -i "s|^#\?EMAIL_OPTION=.*|EMAIL_OPTION=\"$EMAIL_OPTION\"|" "$CUSTOM_FILE"
+
+# Xoá ký tự \r khi sao chép từ windows
+sudo find $CONFIG_DIR -type f -name "*.cnf" -exec sed -i 's/\r//g' {} \;
+sudo sed -i 's/\r//g' $CRON_FILE
+
+# Hoàn thành
 echo "Setup completed! All database backups are now scheduled to run daily."
 
 echo ""

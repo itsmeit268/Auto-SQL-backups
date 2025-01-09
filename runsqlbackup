@@ -1,7 +1,15 @@
 #!/bin/bash
 
-# Đọc cấu hình từ file config.cnf
-CONFIG_FILE="/etc/automysqlbackup/my-config.cnf"
+# Đọc cấu hình từ file my-config.cnf trước
+MY_CONFIG="/etc/automysqlbackup/my-config.cnf"
+if [ -f "$MY_CONFIG" ]; then
+    source "$MY_CONFIG"
+fi
+
+# Sau đó đọc cấu hình chính từ main.cnf
+CONFIG_FILE="/etc/automysqlbackup/conf.d/main.cnf"
+source "$CONFIG_FILE"
+
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "Configuration file not found: $CONFIG_FILE"
   exit 1
@@ -49,6 +57,8 @@ backup_databases() {
 
   echo "Database Backup on $(date +'%Y-%m-%d') - Initiating..."
   echo ""
+  echo "" >>"$LOG_FILE"
+  echo "=== Auto Backup SQL  $(date +'%Y-%m-%d') ======================================" >>"$LOG_FILE"
 
   for DB in $DATABASES; do
     BACKUP_FILE="$backup_dir/$DATE"_"$DB.sql.gz"
@@ -71,16 +81,6 @@ backup_databases() {
   done
 }
 
-# Hàm xoá bản sao lưu cũ
-cleanup_old_backups() {
-  local dir=$1
-  local days=$2
-
-  if [ "$(ls -A $dir 2>/dev/null)" ]; then
-    find "$dir" -type f -mtime +$days -exec echo "$(date +'%Y-%m-%d %H:%M:%S') - Deleting old backup: {}" >>"$LOG_FILE" \; -exec rm -f {} \;
-  fi
-}
-
 # Sao lưu hàng ngày
 backup_databases "$BACKUP_DIR/daily" "Daily"
 
@@ -94,15 +94,51 @@ if [ "$DAY_OF_WEEK" -eq 1 ] && [ "$(date +%d)" -eq 01 ]; then
   backup_databases "$BACKUP_DIR/monthly" "Monthly"
 fi
 
-# Dọn dẹp bản sao lưu cũ
-cleanup_old_backups "$BACKUP_DIR/daily" 30
-cleanup_old_backups "$BACKUP_DIR/weekly" 84
-cleanup_old_backups "$BACKUP_DIR/monthly" 365
+
+# Hàm xử lý theo ngày, tuần, tháng
+cleanup_old_backups() {
+  local dir=$1
+  local days=$2
+
+  # Lấy danh sách các tệp có ngày chỉnh sửa lớn hơn $days
+  local old_files=$(find "$dir" -type f -mtime +$days)
+
+  if [ -n "$old_files" ]; then
+    echo "" >> "$LOG_FILE"
+    echo "$old_files" >> "$LOG_FILE"
+    find "$dir" -type f -mtime +$days -exec rm -v {} \;
+  else
+    echo "No old data found to clean in $dir."
+    echo "$(date +'%Y-%m-%d %H:%M:%S') - No old data found to clean in $dir." >> "$LOG_FILE"
+  fi
+}
+
+# Hàm xoá bản sao lưu cũ theo ngày, tuần, tháng
+cleanup_old_backups_by_time() {
+  local dir=$1
+  local days=$2
+
+  echo ""
+  echo "Cleanup old files: $dir (older than $days days)"
+
+  echo "" >> "$LOG_FILE"
+  echo "Cleanup old files: $dir (older than $days days)" >> "$LOG_FILE"
+
+  cleanup_old_backups "$dir" "$days"
+}
+
+# Cleanup files older than 30 days in daily backup
+cleanup_old_backups_by_time "$BACKUP_DIR/daily" 30
+
+# Cleanup files older than 84 days in weekly backup
+cleanup_old_backups_by_time "$BACKUP_DIR/weekly" 84
+
+# Cleanup files older than 365 days in monthly backup
+cleanup_old_backups_by_time "$BACKUP_DIR/monthly" 365
+
 
 echo ""
-echo "Old data has been cleaned."
 echo "Log written to: $LOG_FILE"
-echo "$(date +'%Y-%m-%d %H:%M:%S') - Old data has been cleaned." >> "$LOG_FILE"
 
 # Tóm tắt kết quả
 TOTAL_DATABASES=$(echo "$DATABASES" | wc -l)
