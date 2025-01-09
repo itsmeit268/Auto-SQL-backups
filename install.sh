@@ -132,3 +132,6 @@ sed -i "s|^EMAIL_OPTION=.*|EMAIL_OPTION=\"$EMAIL_OPTION\"|" "$CUSTOM_FILE"
 
 # Hoàn tất
 echo "Setup completed! All database backups are now scheduled to run daily."
+
+echo ""
+echo "You can use sudo /etc/cron.daily/runsqlbackup for testing."

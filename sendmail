@@ -30,19 +30,26 @@ EMAIL_FROM="noreply@$HOST_MAIL"
 
 # Gửi email dựa trên EMAIL_OPTION
 if [ "$EMAIL_OPTION" = "no_email" ]; then
-  echo "Email notifications are disabled."
-  echo "$(date +'%Y-%m-%d %H:%M:%S') - Email notifications are disabled." >>"$LOG_FILE"
+  echo ""
+  echo "Email not sent, configuration not allowed."
+  echo "$(date +'%Y-%m-%d %H:%M:%S') - Email not sent, configuration not allowed." >>"$LOG_FILE"
   exit 0
 elif [ -z "${EMAIL_FROM}" ] || [ -z "${EMAIL_TO}" ]; then
+  echo ""
+  echo "Email configuration skipped (EMAIL_FROM or EMAIL_TO is empty)."
   echo "$(date +'%Y-%m-%d %H:%M:%S') - Email configuration skipped (EMAIL_FROM or EMAIL_TO is empty)." >>"$LOG_FILE"
   exit 0
 elif ! $EMAIL_SERVICE_INSTALLED; then
+  echo ""
+  echo "No email service installed (sendmail, exim4, postfix, etc.). Email not sent."
   echo "$(date +'%Y-%m-%d %H:%M:%S') - No email service installed (sendmail, exim4, postfix, etc.). Email not sent." >>"$LOG_FILE"
   exit 0
 fi
 
 # Kiểm tra nếu tệp đính kèm được yêu cầu nhưng không có tệp
 if [ "$EMAIL_OPTION" = "attachments" ] && [ -z "$ATTACHMENT_FILES" ]; then
+  echo ""
+  echo "No valid attachment files. Email not sent."
   echo "$(date +'%Y-%m-%d %H:%M:%S') - No valid attachment files. Email not sent." >>"$LOG_FILE"
   exit 0
 fi
@@ -63,6 +70,8 @@ for file in $ATTACHMENT_FILES; do
   if [ -f "$file" ]; then
     ATTACHMENTS="$ATTACHMENTS -A $file"
   else
+    echo ""
+    echo "Attachment file not found: $file"
     echo "$(date +'%Y-%m-%d %H:%M:%S') - Attachment file not found: $file" >>"$LOG_FILE"
   fi
 done
