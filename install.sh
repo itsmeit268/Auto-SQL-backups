@@ -107,18 +107,26 @@ echo ""
 echo "Step 4: Configure Backup Script in cron.daily"
 # Cấu hình script backup trong cron.daily
 CRON_DIR="/etc/cron.daily/"
-CRON_FILE="${CRON_DIR}bk-sqls"
-sudo cp ./bk-sqls "$CRON_DIR"
+CRON_FILE="${CRON_DIR}runsqlbackup"
+sudo cp ./runsqlbackup "$CRON_DIR"
 sudo chmod +x "$CRON_FILE"
 echo "Backup script copied to $CRON_FILE and set as executable."
+
+
+# Copy file cấu hình
+CONFIG_DIR="/etc/automysqlbackup/"
+CONFIG_FILE="${CONFIG_DIR}main.cnf"
+CUSTOM_FILE="${CONFIG_DIR}my-config.cnf"
+sudo mkdir -p ${CONFIG_DIR}
+sudo cp ./main.cnf "$CONFIG_FILE" && sudo cp ./main.cnf "$CUSTOM_FILE"
 
 # Cập nhật cấu hình trong file script
 echo ""
 echo "Step 5: Configuring Backup Script... "
-sed -i "s|^BACKUP_DIR=.*|BACKUP_DIR=\"$BACKUP_DIR\"|" "$CRON_FILE"
-sed -i "s|^EMAIL_TO=.*|EMAIL_TO=\"$EMAIL_TO\"|" "$CRON_FILE"
-sed -i "s|^SENDER_NAME=.*|SENDER_NAME=\"$SENDER_NAME\"|" "$CRON_FILE"
-sed -i "s|^EMAIL_OPTION=.*|EMAIL_OPTION=\"$EMAIL_OPTION\"|" "$CRON_FILE"
+sed -i "s|^BACKUP_DIR=.*|BACKUP_DIR=\"$BACKUP_DIR\"|" "$CUSTOM_FILE"
+sed -i "s|^EMAIL_TO=.*|EMAIL_TO=\"$EMAIL_TO\"|" "$CUSTOM_FILE"
+sed -i "s|^SENDER_NAME=.*|SENDER_NAME=\"$SENDER_NAME\"|" "$CUSTOM_FILE"
+sed -i "s|^EMAIL_OPTION=.*|EMAIL_OPTION=\"$EMAIL_OPTION\"|" "$CUSTOM_FILE"
 
 # Hoàn tất
 echo "Setup completed! All database backups are now scheduled to run daily."
