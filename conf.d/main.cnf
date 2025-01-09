@@ -1,8 +1,19 @@
-# Thông số cấu hình sao lưu
-BACKUP_DIR="/var/backups/db"  # Đường dẫn thư mục sao lưu
-MYSQL_USER="root"             # Tên người dùng MySQL
-MYSQL_PASSWORD=""             # Mật khẩu MySQL
+╔══════════════════════════════════════════════╗
+║       Auto Backup SQL Version 1.1            ║
+║       Tool created by itsmeit.co             ║
+║       Support: buivanloi.2010@gmail.com      ║
+╚══════════════════════════════════════════════╝
+# Backup directory path
+BACKUP_DIR="/var/backups/db"
+# MySQL username
+MYSQL_USER="root"
+# MySQL password
+MYSQL_PASSWORD=""
+# Databases to be excluded from backup
 CONFIG_DB_EXCLUDE="mysql|information_schema|performance_schema|sys|test"
-EMAIL_OPTION="no_email"       # Tùy chọn gửi email: attachments, no_attachments, no_email
-EMAIL_TO=""                   # Email người nhận
-SENDER_NAME="Admin"           # Tên người gửi email
+# Email option: attachments, no_attachments, no_email
+EMAIL_OPTION="no_email"
+# Sender name for email notifications
+SENDER_NAME="Admin"
+# Email address to receive notifications
+EMAIL_TO=""
