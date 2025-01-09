@@ -1,0 +1,104 @@
+#!/bin/bash
+
+CONFIG_FILE="/etc/automysqlbackup/my-config.cnf"
+
+if [ ! -f "$CONFIG_FILE" ]; then
+  echo "Configuration file not found: $CONFIG_FILE"
+  exit 1
+fi
+
+source "$CONFIG_FILE"
+
+# Kiểm tra các dịch vụ email
+EMAIL_SERVICE_INSTALLED=false
+is_installed() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+if is_installed sendmail || is_installed exim4 || is_installed postfix; then
+  EMAIL_SERVICE_INSTALLED=true
+fi
+
+# Kiểm tra /etc/mailname
+if [ -f /etc/mailname ]; then
+  HOST_MAIL=$(cat /etc/mailname)
+else
+  HOST_MAIL=$(hostname -f 2>/dev/null || hostname)
+fi
+
+EMAIL_FROM="noreply@$HOST_MAIL"
+
+# Gửi email dựa trên EMAIL_OPTION
+if [ "$EMAIL_OPTION" = "no_email" ]; then
+  echo "Email notifications are disabled."
+  echo "$(date +'%Y-%m-%d %H:%M:%S') - Email notifications are disabled." >>"$LOG_FILE"
+  exit 0
+elif [ -z "${EMAIL_FROM}" ] || [ -z "${EMAIL_TO}" ]; then
+  echo "$(date +'%Y-%m-%d %H:%M:%S') - Email configuration skipped (EMAIL_FROM or EMAIL_TO is empty)." >>"$LOG_FILE"
+  exit 0
+elif ! $EMAIL_SERVICE_INSTALLED; then
+  echo "$(date +'%Y-%m-%d %H:%M:%S') - No email service installed (sendmail, exim4, postfix, etc.). Email not sent." >>"$LOG_FILE"
+  exit 0
+fi
+
+# Kiểm tra nếu tệp đính kèm được yêu cầu nhưng không có tệp
+if [ "$EMAIL_OPTION" = "attachments" ] && [ -z "$ATTACHMENT_FILES" ]; then
+  echo "$(date +'%Y-%m-%d %H:%M:%S') - No valid attachment files. Email not sent." >>"$LOG_FILE"
+  exit 0
+fi
+
+# Hàm kiểm tra lệnh mail có hỗ trợ tùy chọn -A hay không
+supports_mail_attach() {
+  test_file=$(mktemp)
+  echo "Test file for attachment" >"$test_file"
+  echo "Test" | mail -A "$test_file" -s "Test Subject" "test@localhost" >/dev/null 2>&1
+  local result=$?
+  rm -f "$test_file"
+  return $result
+}
+
+# Xây dựng danh sách file đính kèm
+ATTACHMENTS=""
+for file in $ATTACHMENT_FILES; do
+  if [ -f "$file" ]; then
+    ATTACHMENTS="$ATTACHMENTS -A $file"
+  else
+    echo "$(date +'%Y-%m-%d %H:%M:%S') - Attachment file not found: $file" >>"$LOG_FILE"
+  fi
+done
+
+# Gửi email dựa trên EMAIL_OPTION
+SUBJECT="MySQL Backup Report - $DATE"
+BODY="MySQL Backup Log - $DATE\n$(cat "$LOG_FILE")"
+
+if [ "$EMAIL_OPTION" = "attachments" ]; then
+  # Gửi email với file đính kèm nếu lệnh mail hỗ trợ -A
+  if supports_mail_attach; then
+    if [ -n "$ATTACHMENTS" ]; then
+      echo -e "$BODY" | mail -s "$SUBJECT" -a "From: $EMAIL_FROM" $ATTACHMENTS $EMAIL_TO
+      echo "$(date +'%Y-%m-%d %H:%M:%S') - Email sent with all attachments." >>"$LOG_FILE"
+
+      echo ""
+      echo "Email sent with all attachments."
+    else
+      echo "$(date +'%Y-%m-%d %H:%M:%S') - No valid attachments found. Email not sent." >>"$LOG_FILE"
+
+      echo ""
+      echo "No valid attachments found. Email not sent."
+    fi
+  elif is_installed mutt; then
+    echo -e "$BODY" | mutt -s "$SUBJECT" -e "set from=\"$SENDER_NAME <$EMAIL_FROM>\"" -a $ATTACHMENT_FILES -- "$EMAIL_TO"
+    echo "$(date +'%Y-%m-%d %H:%M:%S') - Email sent with attachments using mutt." >>"$LOG_FILE"
+
+    echo ""
+    echo "Email sent with all attachments."
+  else
+    echo "$(date +'%Y-%m-%d %H:%M:%S') - Neither mail -A nor mutt available. Email not sent." >>"$LOG_FILE"
+  fi
+elif [ "$EMAIL_OPTION" = "no_attachments" ]; then
+  # Gửi email không đính kèm
+  echo -e "$BODY" | mail -s "$SUBJECT" -a "From: $EMAIL_FROM" "$EMAIL_TO"
+  echo "$(date +'%Y-%m-%d %H:%M:%S') - Email notification has been sent (No attachments)." >>"$LOG_FILE"
+  echo ""
+  echo "Email notification has been sent (No attachments)."
+fi

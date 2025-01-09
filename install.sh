@@ -115,14 +115,16 @@ echo "Backup script copied to $CRON_FILE and set as executable."
 
 # Copy file cấu hình
 CONFIG_DIR="/etc/automysqlbackup/"
-CONFIG_FILE="${CONFIG_DIR}main.cnf"
+CONFIG_FILE="${CONFIG_DIR}conf.d/main.cnf"
 CUSTOM_FILE="${CONFIG_DIR}my-config.cnf"
-sudo mkdir -p ${CONFIG_DIR}
-sudo cp ./main.cnf "$CONFIG_FILE" && sudo cp ./main.cnf "$CUSTOM_FILE"
+sudo mkdir -p ${CONFIG_DIR} && sudo mkdir -p "${CONFIG_DIR}conf.d"
+sudo cp ./conf.d/main.cnf "$CONFIG_FILE" && sudo cp ./conf.d/main.cnf "$CUSTOM_FILE"
+sudo cp ./sendmail "${CONFIG_DIR}/sendmail"
 
 # Cập nhật cấu hình trong file script
 echo ""
 echo "Step 5: Configuring Backup Script... "
+sed -i '2i source "/etc/automysqlbackup/conf.d/main.cnf"' "$CUSTOM_FILE"
 sed -i "s|^BACKUP_DIR=.*|BACKUP_DIR=\"$BACKUP_DIR\"|" "$CUSTOM_FILE"
 sed -i "s|^EMAIL_TO=.*|EMAIL_TO=\"$EMAIL_TO\"|" "$CUSTOM_FILE"
 sed -i "s|^SENDER_NAME=.*|SENDER_NAME=\"$SENDER_NAME\"|" "$CUSTOM_FILE"

@@ -4,6 +4,5 @@ MYSQL_USER="root"             # Tên người dùng MySQL
 MYSQL_PASSWORD=""             # Mật khẩu MySQL
 CONFIG_DB_EXCLUDE="mysql|information_schema|performance_schema|sys|test"
 EMAIL_OPTION="no_email"       # Tùy chọn gửi email: attachments, no_attachments, no_email
-EMAIL_FROM="no-reply@example.com" # Email gửi từ
 EMAIL_TO=""                   # Email người nhận
 SENDER_NAME="Admin"           # Tên người gửi email
