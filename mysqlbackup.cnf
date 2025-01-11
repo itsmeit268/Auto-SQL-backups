@@ -2,7 +2,7 @@
 BACKUP_DIR="/var/backups/db"
 
 # MySQL username
-MYSQL_USER="root"
+MYSQL_USER="itsmeit"
 
 # MySQL password
 MYSQL_PASSWORD=""
@@ -11,7 +11,7 @@ MYSQL_PASSWORD=""
 CONFIG_DB_EXCLUDE="mysql|information_schema|performance_schema|sys|test"
 
 # Email option: attachments, no_attachments, no_email
-EMAIL_OPTION="no_email"
+EMAIL_OPTION="no_attachments"
 
 # Sender name for email notifications
 SENDER_NAME="Admin"

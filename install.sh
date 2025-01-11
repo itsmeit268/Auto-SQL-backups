@@ -20,7 +20,7 @@ if echo "$SQL_USER" | grep -q "using password: NO"; then
   done
 
   while true; do
-    read -p "Enter MySQL password: " MYSQL_PASSWORD
+    read -sp "Enter MySQL password: " MYSQL_PASSWORD
     echo ""
     MYSQL_PASSWORD=$(echo "$MYSQL_PASSWORD" | xargs)
 
@@ -56,7 +56,7 @@ fi
 DEFAULT_DIR="/var/backups/db"
 echo "Step 1: Backup Storage Path (default: $DEFAULT_DIR)"
 while true; do
-  read -e -i "$DEFAULT_DIR" -p "Press Enter to use default, or enter custom storage path: " BACKUP_DIR
+  read -e -i "$DEFAULT_DIR" -p "Use default or enter folder path to backup: " BACKUP_DIR
   BACKUP_DIR=$(echo "$BACKUP_DIR" | xargs)
   BACKUP_DIR=${BACKUP_DIR:-$DEFAULT_DIR}
 
@@ -78,16 +78,15 @@ MAIL_SERVICE=""
 
 if command -v sendmail >/dev/null 2>&1; then
   MAIL_SERVICE="sendmail"
-  echo "Sendmail service detected. Do you want to configure email notifications for backup?"
-elif command -v exim >/dev/null 2>&1; then
-  MAIL_SERVICE="exim"
-  echo "Exim service detected."
+  echo -e "[sendmail] service detected. Do you want to configure email notifications for backup?"
+elif command -v exim4 >/dev/null 2>&1; then
+  MAIL_SERVICE="exim4"
+  echo -e "[exim4] service detected. Do you want to configure email notifications for backup?"
 elif command -v postfix >/dev/null 2>&1; then
   MAIL_SERVICE="postfix"
-  echo "Postfix service detected."
+  echo -e "[postfix] service detected. Do you want to configure email notifications for backup?"
 else
-  echo "No mail service detected (sendmail, exim, postfix). Email configuration skipped."
-  exit 1
+  echo -e "The server has no mail service."
 fi
 
 # Hỏi người dùng có muốn cấu hình gửi mail với tùy chọn y/d/n
@@ -159,7 +158,9 @@ if [ -n "$MAIL_SERVICE" ]; then
     SENDER_NAME=""
   fi
 else
-  echo "No mail service detected (sendmail, exim, postfix). Email configuration skipped."
+  echo ""
+  echo "Step 3: Configure Email Settings"
+  echo "No mail service detected (sendmail, exim, postfix). Skipped."
   EMAIL_TO=""
   SENDER_NAME=""
 fi
