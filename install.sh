@@ -47,17 +47,25 @@ if [ -n "$MAIL_SERVICE" ]; then
     read -p "Please select an option (d/y/n): " SEND_EMAIL
     SEND_EMAIL=$(echo "$SEND_EMAIL" | xargs) # Loại bỏ khoảng trắng thừa
 
-    if [ "$SEND_EMAIL" = "y" ] || [ "$SEND_EMAIL" = "Y" ]; then
-      EMAIL_OPTION="attachments"
-      break
+    if [ -z "$SEND_EMAIL" ]; then
+        EMAIL_OPTION="no_attachments"
+        echo "No option selected, defaulting to send mail without attachments ($EMAIL_OPTION)"
+        break
+    elif [ "$SEND_EMAIL" = "y" ] || [ "$SEND_EMAIL" = "Y" ]; then
+        EMAIL_OPTION="attachments"
+        echo "Email will be sent with attachments ($EMAIL_OPTION)"
+        break
     elif [ "$SEND_EMAIL" = "d" ] || [ "$SEND_EMAIL" = "D" ]; then
-      EMAIL_OPTION="no_attachments"
-      break
+        EMAIL_OPTION="no_attachments"
+        echo "Email will be sent with no attachments ($EMAIL_OPTION)"
+        break
     elif [ "$SEND_EMAIL" = "n" ] || [ "$SEND_EMAIL" = "N" ]; then
-      EMAIL_OPTION="no_email"
-      break
+        EMAIL_OPTION="no_email"
+        echo "Email sending feature has been disabled ($EMAIL_OPTION)"
+        break
     else
-      echo "Invalid input. Please enter 'y', 'd', or 'n'."
+        echo ""
+        echo "Invalid input. Please enter 'y', 'd', or 'n'."
     fi
   done
 
@@ -114,12 +122,9 @@ echo "Backup script copied to $CRON_FILE and set as executable."
 
 # Copy file cấu hình
 CONFIG_DIR="/etc/automysqlbackup/"
-CONFIG_FILE="${CONFIG_DIR}conf.d/main.cnf"
-CUSTOM_FILE="${CONFIG_DIR}my-config.cnf"
+CONFIG_FILE="${CONFIG_DIR}mysqlbackup.cnf"
 sudo mkdir -p ${CONFIG_DIR}
-sudo mkdir -p "${CONFIG_DIR}conf.d"
-sudo cp ./conf.d/main.cnf "$CONFIG_FILE"
-sudo cp ./my-config.cnf "$CUSTOM_FILE"
+sudo cp ./mysqlbackup.cnf "$CONFIG_FILE"
 sudo cp ./sendmail "${CONFIG_DIR}/sendmail"
 
 # Cập nhật cấu hình trong file script
@@ -127,12 +132,12 @@ echo ""
 echo "Step 5: Configuring Backup Script... "
 
 if [ "$BACKUP_DIR" != "/var/backups/db" ]; then
-  sed -i "s|^#\?BACKUP_DIR=.*|BACKUP_DIR=\"$BACKUP_DIR\"|" "$CUSTOM_FILE"
+  sed -i "s|^#\?BACKUP_DIR=.*|BACKUP_DIR=\"$BACKUP_DIR\"|" "$CONFIG_FILE"
 fi
 
-sed -i "s|^#\?EMAIL_TO=.*|EMAIL_TO=\"$EMAIL_TO\"|" "$CUSTOM_FILE"
-sed -i "s|^#\?SENDER_NAME=.*|SENDER_NAME=\"$SENDER_NAME\"|" "$CUSTOM_FILE"
-sed -i "s|^#\?EMAIL_OPTION=.*|EMAIL_OPTION=\"$EMAIL_OPTION\"|" "$CUSTOM_FILE"
+sed -i "s|^#\?EMAIL_TO=.*|EMAIL_TO=\"$EMAIL_TO\"|" "$CONFIG_FILE"
+sed -i "s|^#\?SENDER_NAME=.*|SENDER_NAME=\"$SENDER_NAME\"|" "$CONFIG_FILE"
+sed -i "s|^#\?EMAIL_OPTION=.*|EMAIL_OPTION=\"$EMAIL_OPTION\"|" "$CONFIG_FILE"
 
 # Xoá ký tự \r khi sao chép từ windows
 sudo find $CONFIG_DIR -type f -name "*.cnf" -exec sed -i 's/\r//g' {} \;

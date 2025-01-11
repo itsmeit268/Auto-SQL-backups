@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONFIG_FILE="/etc/automysqlbackup/my-config.cnf"
+CONFIG_FILE="/etc/automysqlbackup/mysqlbackup.cnf"
 
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "Configuration file not found: $CONFIG_FILE"
