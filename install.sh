@@ -1,11 +1,64 @@
 #!/bin/bash
 
+# Kiểm tra quyền user
+DEFAULT_USER="root"
+SQL_USER=$(sudo mysql -u $DEFAULT_USER -e "exit" 2>&1)
+
+if echo "$SQL_USER" | grep -q "using password: NO"; then
+  # Yêu cầu nhập MySQL user và password
+  while true; do
+    echo "Automatic SQL backup uses root user as default, please enter information."
+    read -e -i "$DEFAULT_USER" -p "Enter MySQL username [default: $DEFAULT_USER]: " MYSQL_USER
+    MYSQL_USER=${MYSQL_USER:-$DEFAULT_USER}  # Nếu không nhập, dùng giá trị mặc định là $DEFAULT_USER
+    MYSQL_USER=$(echo "$MYSQL_USER" | tr -cd '\11\12\15\40-\176')
+    # Kiểm tra nếu username trống
+    if [ -z "$MYSQL_USER" ]; then
+      echo "MySQL username cannot be empty. Please enter a valid username."
+    else
+      break
+    fi
+  done
+
+  while true; do
+    read -p "Enter MySQL password: " MYSQL_PASSWORD
+    echo ""
+    MYSQL_PASSWORD=$(echo "$MYSQL_PASSWORD" | xargs)
+
+    # Kiểm tra nếu password trống
+    if [ -z "$MYSQL_PASSWORD" ]; then
+      echo "Password cannot be empty. Please enter a valid password."
+    else
+      # Kiểm tra kết nối với thông tin đã nhập
+      CONNECT_TEST=$(mysql -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "exit" 2>&1)
+      if echo "$CONNECT_TEST" | grep -q "Access denied"; then
+        echo "Incorrect username or password."
+      else
+        #echo "Login successful!"
+        break
+      fi
+    fi
+  done
+
+  # Cập nhật file config
+  CONFIG_FILE="./mysqlbackup.cnf"
+  if [ -f "$CONFIG_FILE" ]; then
+    sed -i "s|^#\?MYSQL_USER=.*|MYSQL_USER=\"$MYSQL_USER\"|" "$CONFIG_FILE"
+    sed -i "s|^#\?MYSQL_PASSWORD=.*|MYSQL_PASSWORD=\"$MYSQL_PASSWORD\"|" "$CONFIG_FILE"
+    echo "MySQL is ready, please proceed with the configuration steps:"
+    echo ""
+  else
+    echo "Configuration file $CONFIG_FILE not found. Unable to update MySQL credentials."
+    exit 1
+  fi
+fi
+
 # Bắt đầu cấu hình
-echo "Step 1: Backup Storage Path (default: /var/backups/db)"
+DEFAULT_DIR="/var/backups/db"
+echo "Step 1: Backup Storage Path (default: $DEFAULT_DIR)"
 while true; do
-  read -p "Press Enter to use default, or enter custom storage path: " BACKUP_DIR
-  BACKUP_DIR=$(echo "$BACKUP_DIR" | xargs)  # Loại bỏ khoảng trắng thừa
-  BACKUP_DIR=${BACKUP_DIR:-/var/backups/db} # Sử dụng mặc định nếu không nhập gì
+  read -e -i "$DEFAULT_DIR" -p "Press Enter to use default, or enter custom storage path: " BACKUP_DIR
+  BACKUP_DIR=$(echo "$BACKUP_DIR" | xargs)
+  BACKUP_DIR=${BACKUP_DIR:-$DEFAULT_DIR}
 
   # Kiểm tra xem đường dẫn có phải là một thư mục hợp lệ không
   if [ -d "$BACKUP_DIR" ] || mkdir -p "$BACKUP_DIR"; then
@@ -17,7 +70,7 @@ done
 
 echo "Backup directory is ready at: $BACKUP_DIR"
 
-# Kiểm tra các công cụ gửi mail phổ biến
+# Kiểm tra server có cài các công cụ gửi mail hay không
 echo ""
 echo "Step 2: Checking for Mail Services"
 
@@ -48,24 +101,24 @@ if [ -n "$MAIL_SERVICE" ]; then
     SEND_EMAIL=$(echo "$SEND_EMAIL" | xargs) # Loại bỏ khoảng trắng thừa
 
     if [ -z "$SEND_EMAIL" ]; then
-        EMAIL_OPTION="no_attachments"
-        echo "No option selected, defaulting to send mail without attachments ($EMAIL_OPTION)"
-        break
+      EMAIL_OPTION="no_attachments"
+      echo "No option selected, defaulting to send mail without attachments ($EMAIL_OPTION)"
+      break
     elif [ "$SEND_EMAIL" = "y" ] || [ "$SEND_EMAIL" = "Y" ]; then
-        EMAIL_OPTION="attachments"
-        echo "Email will be sent with attachments ($EMAIL_OPTION)"
-        break
+      EMAIL_OPTION="attachments"
+      echo "Email will be sent with attachments ($EMAIL_OPTION)"
+      break
     elif [ "$SEND_EMAIL" = "d" ] || [ "$SEND_EMAIL" = "D" ]; then
-        EMAIL_OPTION="no_attachments"
-        echo "Email will be sent with no attachments ($EMAIL_OPTION)"
-        break
+      EMAIL_OPTION="no_attachments"
+      echo "Email will be sent with no attachments ($EMAIL_OPTION)"
+      break
     elif [ "$SEND_EMAIL" = "n" ] || [ "$SEND_EMAIL" = "N" ]; then
-        EMAIL_OPTION="no_email"
-        echo "Email sending feature has been disabled ($EMAIL_OPTION)"
-        break
+      EMAIL_OPTION="no_email"
+      echo "Email sending feature has been disabled ($EMAIL_OPTION)"
+      break
     else
-        echo ""
-        echo "Invalid input. Please enter 'y', 'd', or 'n'."
+      echo ""
+      echo "Invalid input. Please enter 'y', 'd', or 'n'."
     fi
   done
 
@@ -138,6 +191,10 @@ fi
 sed -i "s|^#\?EMAIL_TO=.*|EMAIL_TO=\"$EMAIL_TO\"|" "$CONFIG_FILE"
 sed -i "s|^#\?SENDER_NAME=.*|SENDER_NAME=\"$SENDER_NAME\"|" "$CONFIG_FILE"
 sed -i "s|^#\?EMAIL_OPTION=.*|EMAIL_OPTION=\"$EMAIL_OPTION\"|" "$CONFIG_FILE"
+
+# Revert
+sed -i "s|^#\?MYSQL_USER=.*|MYSQL_USER=\"$DEFAULT_USER\"|" "./mysqlbackup.cnf"
+sed -i "s|^#\?MYSQL_PASSWORD=.*|MYSQL_PASSWORD=\"\"|" "./mysqlbackup.cnf"
 
 # Xoá ký tự \r khi sao chép từ windows
 sudo find $CONFIG_DIR -type f -name "*.cnf" -exec sed -i 's/\r//g' {} \;

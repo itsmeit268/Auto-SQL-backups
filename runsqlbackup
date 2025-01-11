@@ -34,13 +34,11 @@ for dir in daily weekly monthly; do
   }
 done
 
-#sudo chown -R root:root $BACKUP_DIR*
-#sudo find $BACKUP_DIR* -type f -exec chmod 644 {} \;
-#sudo find $BACKUP_DIR* -type d -exec chmod 755 {} \;
-
-echo $MYSQL_PASSWORD
-echo $MYSQL_USER
-
+sudo chown -R root:root $BACKUP_DIR*
+sudo find $BACKUP_DIR* -type f -exec chmod 644 {} \;
+sudo find $BACKUP_DIR* -type d -exec chmod 755 {} \;
+#sudo find $BACKUP_DIR* -type f -exec chmod 400 {} \;
+#sudo find $BACKUP_DIR* -type d -exec chmod 700 {} \;
 
 SUCCESSFUL_BACKUPS=""
 FAILED_BACKUPS=""
@@ -155,5 +153,4 @@ if [ -f "$CONFIG_MAIL" ]; then
 else
   echo "$(date +'%Y-%m-%d %H:%M:%S') - Mail not sent because the configuration file could not be found.: $CONFIG_MAIL." >>"$LOG_FILE"
 fi
-
 

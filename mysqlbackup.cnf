@@ -11,13 +11,10 @@ MYSQL_PASSWORD=""
 CONFIG_DB_EXCLUDE="mysql|information_schema|performance_schema|sys|test"
 
 # Email option: attachments, no_attachments, no_email
-# no_attachments: Default - send mail without attachments
-# no_email: No - do not send email
-# attachments: Yes - send mail with attachments
-EMAIL_OPTION="no_attachments"
+EMAIL_OPTION="no_email"
 
 # Sender name for email notifications
-SENDER_NAME="Loibv"
+SENDER_NAME="Admin"
 
 # Email address to receive notifications
-EMAIL_TO="buivanloi.2010@gmail.com"
+EMAIL_TO=""
