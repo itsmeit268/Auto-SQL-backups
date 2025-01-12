@@ -13,6 +13,7 @@ mkdir -p $BACKUP_DIR
 
 # Định nghĩa các biến phụ thuộc
 DATE=$(date +%d-%m-%Y)
+DAY_NAME=$(date +%A)
 DAY_OF_WEEK=$(date +%u)  # Ngày trong tuần (1 = Thứ 2, 7 = Chủ nhật)
 LOG_FILE="$BACKUP_DIR/backup_log_$DATE.log"
 
@@ -62,7 +63,7 @@ backup_databases() {
     DB_BACKUP_DIR="$backup_dir/$DB"
     mkdir -p "$DB_BACKUP_DIR"
 
-    BACKUP_FILE="$DB_BACKUP_DIR/$DATE"_"$DB.sql.gz"
+    BACKUP_FILE="$DB_BACKUP_DIR/${DATE}_${DB}_${DAY_NAME}.sql.gz"
     if mysqldump -u$MYSQL_USER $DB | gzip >"$BACKUP_FILE"; then
       # Kiểm tra kích thước file để phát hiện lỗi
       if [ -s "$BACKUP_FILE" ]; then
@@ -82,12 +83,11 @@ backup_databases() {
   done
 }
 
-
 # Sao lưu hàng ngày
 backup_databases "$BACKUP_DIR/daily" "Daily"
 
-# Sao lưu hàng tuần (chỉ vào Chủ nhật)
-if [ "$DAY_OF_WEEK" -eq 7 ]; then
+# Sao lưu hàng tuần (chỉ vào thứ 7)
+if [ "$DAY_OF_WEEK" -eq 6 ]; then
   backup_databases "$BACKUP_DIR/weekly" "Weekly"
 fi
 
@@ -121,13 +121,13 @@ cleanup_old_backups_by_time() {
   local dir=$1
   local days=$2
 
-  TEXT="Cleanup old files: $dir (older than $days days)"
+  CLEAN_NOTICE="Cleanup old files: $dir (older than $days days)"
 
   echo ""
-  echo $TEXT
+  echo $CLEAN_NOTICE
 
   echo "" >> "$LOG_FILE"
-  echo $TEXT >> "$LOG_FILE"
+  echo $CLEAN_NOTICE >> "$LOG_FILE"
 
   cleanup_old_backups "$dir" "$days"
 }
@@ -140,7 +140,6 @@ cleanup_old_backups_by_time "$BACKUP_DIR/weekly" 84
 
 # Cleanup files older than 365 days in monthly backup
 cleanup_old_backups_by_time "$BACKUP_DIR/monthly" 365
-
 
 echo ""
 echo "Log written to: $LOG_FILE"
