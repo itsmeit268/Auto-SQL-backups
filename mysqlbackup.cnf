@@ -2,7 +2,7 @@
 BACKUP_DIR="/var/backups/db"
 
 # MySQL username
-MYSQL_USER="itsmeit"
+MYSQL_USER="root"
 
 # MySQL password
 MYSQL_PASSWORD=""
