@@ -9,7 +9,7 @@ if echo "$SQL_USER" | grep -q "using password: NO"; then
   while true; do
     echo "Automatic SQL backup uses root user as default, please enter information."
     read -e -i "$DEFAULT_USER" -p "Enter MySQL username [default: $DEFAULT_USER]: " MYSQL_USER
-    MYSQL_USER=${MYSQL_USER:-$DEFAULT_USER}  # Nếu không nhập, dùng giá trị mặc định là $DEFAULT_USER
+    MYSQL_USER=${MYSQL_USER:-$DEFAULT_USER} # Nếu không nhập, dùng giá trị mặc định là $DEFAULT_USER
     MYSQL_USER=$(echo "$MYSQL_USER" | tr -cd '\11\12\15\40-\176')
     # Kiểm tra nếu username trống
     if [ -z "$MYSQL_USER" ]; then
@@ -166,13 +166,40 @@ else
 fi
 
 echo ""
-echo "Step 4: Configure Backup Script in cron.daily"
-# Cấu hình script backup trong cron.daily
+echo "Step 4: Configure Backup Script"
+
 CRON_DIR="/etc/cron.daily/"
+
+# Kiểm tra xem "/usr/local/bin" có nằm trong PATH hay không
+if echo "$PATH" | grep -q "/usr/local/bin"; then
+  EXECS_DIR="/usr/local/bin/"
+else
+  EXECS_DIR="${CRON_DIR}"
+fi
+
+# Cài đặt script backup vào thư mục phù hợp
+EXECS_FILE="${EXECS_DIR}runsqlbackup"
+sudo cp ./runsqlbackup "$EXECS_FILE"
+sudo chmod +x "$EXECS_FILE"
+
 CRON_FILE="${CRON_DIR}runsqlbackup"
-sudo cp ./runsqlbackup "$CRON_DIR"
-sudo chmod +x "$CRON_FILE"
-echo "Backup script copied to $CRON_FILE and set as executable."
+
+# Tạo nội dung cho file
+echo "#!/bin/sh" >"${CRON_FILE}"
+echo "/usr/local/bin/runsqlbackup" >>"${CRON_FILE}"
+
+# Cấp quyền thực thi cho file
+sudo chmod +x "${CRON_FILE}"
+
+# Chạy các lệnh bên trong file
+echo "chown -R root:root \$BACKUP_DIR*" >>"${CRON_FILE}"
+echo "find \$BACKUP_DIR* -type f -exec chmod 400 {} \;" >>"${CRON_FILE}"
+echo "find \$BACKUP_DIR* -type d -exec chmod 700 {} \;" >>"${CRON_FILE}"
+
+# Cấp quyền cho file vừa tạo
+chmod +x "${CRON_FILE}"
+
+echo "Backup script copied to $EXECS_FILE and set as executable."
 
 # Copy file cấu hình
 CONFIG_DIR="/etc/automysqlbackup/"
@@ -199,10 +226,10 @@ sed -i "s|^#\?MYSQL_PASSWORD=.*|MYSQL_PASSWORD=\"\"|" "./mysqlbackup.cnf"
 
 # Xoá ký tự \r khi sao chép từ windows
 sudo find $CONFIG_DIR -type f -name "*.cnf" -exec sed -i 's/\r//g' {} \;
-sudo sed -i 's/\r//g' $CRON_FILE
+sudo sed -i 's/\r//g' $EXECS_FILE
 
 # Hoàn thành
 echo "Setup completed! All database backups are now scheduled to run daily."
 
 echo ""
-echo "You can use sudo /etc/cron.daily/runsqlbackup for testing."
+echo "You can use sudo $EXECS_FILE for testing."
