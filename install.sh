@@ -100,7 +100,7 @@ if [ -n "$MAIL_SERVICE" ]; then
     SEND_EMAIL=$(echo "$SEND_EMAIL" | xargs) # Loại bỏ khoảng trắng thừa
 
     if [ -z "$SEND_EMAIL" ]; then
-      EMAIL_OPTION="no_attachments"
+      EMAIL_OPTION="no_email"
       echo "No option selected, defaulting to send mail without attachments ($EMAIL_OPTION)"
       break
     elif [ "$SEND_EMAIL" = "y" ] || [ "$SEND_EMAIL" = "Y" ]; then
@@ -181,7 +181,11 @@ fi
 EXECS_FILE="${EXECS_DIR}runsqlbackup"
 sudo cp ./runsqlbackup "$EXECS_FILE"
 sudo chmod +x "$EXECS_FILE"
+echo "Backup script copied to $EXECS_FILE and set as executable."
 
+# Cập nhật cấu hình sao lưu hàng ngày
+echo ""
+echo "Step 5: Creating daily backup configuration... "
 CRON_FILE="${CRON_DIR}runsqlbackup"
 
 # Tạo nội dung cho file
@@ -192,14 +196,12 @@ echo "/usr/local/bin/runsqlbackup" >>"${CRON_FILE}"
 sudo chmod +x "${CRON_FILE}"
 
 # Chạy các lệnh bên trong file
-echo "chown -R root:root \$BACKUP_DIR*" >>"${CRON_FILE}"
-echo "find \$BACKUP_DIR* -type f -exec chmod 400 {} \;" >>"${CRON_FILE}"
-echo "find \$BACKUP_DIR* -type d -exec chmod 700 {} \;" >>"${CRON_FILE}"
+#echo "chown -R root:root \$BACKUP_DIR*" >>"${CRON_FILE}"
+#echo "find \$BACKUP_DIR* -type f -exec chmod 400 {} \;" >>"${CRON_FILE}"
+#echo "find \$BACKUP_DIR* -type d -exec chmod 700 {} \;" >>"${CRON_FILE}"
 
 # Cấp quyền cho file vừa tạo
 chmod +x "${CRON_FILE}"
-
-echo "Backup script copied to $EXECS_FILE and set as executable."
 
 # Copy file cấu hình
 CONFIG_DIR="/etc/automysqlbackup/"
@@ -207,10 +209,6 @@ CONFIG_FILE="${CONFIG_DIR}mysqlbackup.cnf"
 sudo mkdir -p ${CONFIG_DIR}
 sudo cp ./mysqlbackup.cnf "$CONFIG_FILE"
 sudo cp ./sendmail "${CONFIG_DIR}/sendmail"
-
-# Cập nhật cấu hình trong file script
-echo ""
-echo "Step 5: Configuring Backup Script... "
 
 if [ "$BACKUP_DIR" != "/var/backups/db" ]; then
   sed -i "s|^#\?BACKUP_DIR=.*|BACKUP_DIR=\"$BACKUP_DIR\"|" "$CONFIG_FILE"
@@ -228,8 +226,15 @@ sed -i "s|^#\?MYSQL_PASSWORD=.*|MYSQL_PASSWORD=\"\"|" "./mysqlbackup.cnf"
 sudo find $CONFIG_DIR -type f -name "*.cnf" -exec sed -i 's/\r//g' {} \;
 sudo sed -i 's/\r//g' $EXECS_FILE
 
-# Hoàn thành
-echo "Setup completed! All database backups are now scheduled to run daily."
+if [ -f "$CONFIG_FILE" ] && [ -f "$CRON_FILE" ] && [ -f "$EXECS_FILE" ]; then
+  # Hoàn thành
+  echo "Setup completed! All database backups are now scheduled to run daily."
+  echo ""
+  echo "You can use sudo $EXECS_FILE for testing."
+else
+  echo "One or more files are missing:"
+  [ ! -f "$CONFIG_FILE" ] && echo "$CONFIG_FILE does not exist."
+  [ ! -f "$CRON_FILE" ] && echo "$CRON_FILE does not exist."
+  [ ! -f "$EXECS_FILE" ] && echo "$EXECS_FILE does not exist."
+fi
 
-echo ""
-echo "You can use sudo $EXECS_FILE for testing."

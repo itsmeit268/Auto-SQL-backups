@@ -1,7 +1,11 @@
 #!/bin/bash
 
 # Đọc cấu hình chính từ mysqlbackup.cnf
-CONFIG_FILE="/etc/automysqlbackup/mysqlbackup.cnf"
+CONFIG_DIR="/etc/automysqlbackup/"
+CONFIG_FILE="${CONFIG_DIR}mysqlbackup.cnf"
+# Gửi email hoặc đính kèm ATTACHMENT_FILES
+CONFIG_MAIL="${CONFIG_DIR}sendmail"
+
 
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "Configuration file not found: $CONFIG_FILE"
@@ -25,6 +29,57 @@ export MYSQL_PWD=$MYSQL_PASSWORD
 
 # Lấy danh sách database cần sao lưu
 DATABASES=$(mysql -u$MYSQL_USER -e "SHOW DATABASES;" | grep -Ev "(Database|$CONFIG_DB_EXCLUDE)")
+
+# Hàm ghi log và hiển thị ra terminal
+log_notice() {
+  local message=$1
+  echo "$message"           # Hiển thị ra terminal
+  echo -e "$message" >>"$LOG_FILE"  # Ghi vào log file
+}
+
+WARNING=0
+# Dự đoán dung lượng cần sao lưu
+check_backup_disk_space() {
+  local TOTAL_BACKUP_SIZE=0
+
+  for DB in $DATABASES; do
+    TABLE_SIZES=$(mysql -u$MYSQL_USER $DB -e "SHOW TABLE STATUS;" | awk '{sum += $7} END {print sum}')
+    TOTAL_BACKUP_SIZE=$((TOTAL_BACKUP_SIZE + TABLE_SIZES))
+  done
+
+  # Chuyển đổi từ KB sang MB
+  local TOTAL_BACKUP_SIZE_MB=$((TOTAL_BACKUP_SIZE / 1024 / 1024))
+
+  # Tính nén gz 10% 20% 30% 40% 50% 60% 70% 80%
+  PERCENTAGE=87
+  local TOTAL_BACKUP_SIZE_MB=$((TOTAL_BACKUP_SIZE_MB - (TOTAL_BACKUP_SIZE_MB * PERCENTAGE / 100)))
+
+  # Đo dung lượng trống còn lại trên ổ
+  local FREE_DISK_SPACE=$(df -BG "$BACKUP_DIR" | grep -v Filesystem | awk '{print $4}' | tr -d 'G')
+
+  # Chuyển đổi từ GB sang MB
+  local FREE_DISK_SPACE_MB=$((FREE_DISK_SPACE * 1024))
+
+  # So sánh và thực hiện hành động nếu cần
+  if [ $TOTAL_BACKUP_SIZE_MB -gt $FREE_DISK_SPACE_MB ]; then
+    echo "WARNING: Disk full, not enough space to backup database."
+    # Gửi email cảnh báo hoặc làm các hành động khác
+    echo "$(date +'%Y-%m-%d %H:%M:%S') - WARNING: Disk full, not enough space to backup database." >>"$LOG_FILE"
+    # Gửi email hoặc đính kèm ATTACHMENT_FILES
+    if [ -f "$CONFIG_MAIL" ]; then
+      WARNING=1
+      source "$CONFIG_MAIL"
+    else
+      log_notice ""
+      log_notice "Mail not sent because the configuration file could not be found: $CONFIG_MAIL"
+    fi
+    exit 1
+  fi
+}
+
+check_backup_disk_space
+
+# End test
 
 if [ -z "$DATABASES" ]; then
   echo "$(date +'%Y-%m-%d %H:%M:%S') - No databases found to backup." >>"$LOG_FILE"
@@ -147,13 +202,6 @@ TOTAL_SUCCESS=$(echo -e "$SUCCESSFUL_BACKUPS" | grep -c ".sql.gz")
 TOTAL_FAILED=$(echo -e "$FAILED_BACKUPS" | grep -c "Backup failed")
 TOTAL_BACKUP_SIZE=$(du -ch "$BACKUP_DIR" | grep total | awk '{print $1}')
 
-# Hàm ghi log và hiển thị ra terminal
-log_notice() {
-  local message=$1
-  echo "$message"           # Hiển thị ra terminal
-  echo -e "$message" >>"$LOG_FILE"  # Ghi vào log file
-}
-
 # Hiển thị và ghi log
 log_notice ""
 log_notice "Summary:"
@@ -163,7 +211,6 @@ log_notice "$(date +'%Y-%m-%d %H:%M:%S') - Failed backups: $TOTAL_FAILED"
 log_notice "$(date +'%Y-%m-%d %H:%M:%S') - Total backup size: $TOTAL_BACKUP_SIZE"
 
 # Gửi email hoặc đính kèm ATTACHMENT_FILES
-CONFIG_MAIL="/etc/automysqlbackup/sendmail"
 if [ -f "$CONFIG_MAIL" ]; then
   source "$CONFIG_MAIL"
 else

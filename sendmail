@@ -27,6 +27,10 @@ else
 fi
 
 EMAIL_FROM="noreply@$HOST_MAIL"
+if [ "$WARNING" = 1 ] && [ -n "$EMAIL_TO" ]; then
+    echo -e "Subject: WARNING [SQL Backup]: Disk full - Immediate action required\n\nDear User,\n\nThis is to inform you that the disk space is almost full, and there is not enough space to perform a backup of the database. Please take immediate action to free up space.\n\nThank you,\nSystem Administrator" | mail -s "WARNING: Disk full - Immediate action required" -a "From: $EMAIL_FROM" -a "To: To <$EMAIL_TO>" $EMAIL_TO
+    exit 1
+fi
 
 # Gửi email dựa trên EMAIL_OPTION
 if [ "$EMAIL_OPTION" = "no_email" ]; then
