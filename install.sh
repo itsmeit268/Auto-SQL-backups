@@ -180,7 +180,6 @@ fi
 # Cài đặt script backup vào thư mục phù hợp
 EXECS_FILE="${EXECS_DIR}runsqlbackup"
 sudo cp ./runsqlbackup "$EXECS_FILE"
-sudo chmod +x "$EXECS_FILE"
 echo "Backup script copied to $EXECS_FILE and set as executable."
 
 # Cập nhật cấu hình sao lưu hàng ngày
@@ -194,9 +193,6 @@ echo "/usr/local/bin/runsqlbackup" >>"${CRON_FILE}"
 
 # Cấp quyền thực thi cho file
 sudo chmod +x "${CRON_FILE}"
-
-# Cấp quyền cho file vừa tạo
-chmod +x "${CRON_FILE}"
 
 # Copy file cấu hình
 CONFIG_DIR="/etc/automysqlbackup/"

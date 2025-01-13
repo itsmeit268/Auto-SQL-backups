@@ -196,16 +196,17 @@ cleanup_old_backups_by_time "$BACKUP_DIR/monthly" 365
 echo ""
 echo "Log written to: $LOG_FILE"
 
+# Đặt quyền cho thư mục sao lưu
+if [ -n "$BACKUP_DIR" ] && [ "$BACKUP_DIR" = "/var/backups/db" ] && [ -d "$BACKUP_DIR" ]; then
+    chown -R root:root "$BACKUP_DIR*"
+    find "$BACKUP_DIR*" -type f -exec chmod 400 {} \;
+    find "$BACKUP_DIR*" -type d -exec chmod 700 {} \;
+fi
+
 # Tóm tắt kết quả
 TOTAL_DATABASES=$(echo "$DATABASES" | wc -l)
 TOTAL_SUCCESS=$(echo -e "$SUCCESSFUL_BACKUPS" | grep -c ".sql.gz")
 TOTAL_FAILED=$(echo -e "$FAILED_BACKUPS" | grep -c "Backup failed")
-
-
-# Chạy các lệnh bên trong file
-chown -R root:root $BACKUP_DIR*
-find $BACKUP_DIR* -type f -exec chmod 400 {} \;
-find $BACKUP_DIR* -type d -exec chmod 700 {} \;
 
 # Hiển thị và ghi log
 log_notice ""
