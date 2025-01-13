@@ -37,28 +37,28 @@ log_notice() {
   echo -e "$message" >>"$LOG_FILE"  # Ghi vào log file
 }
 
-WARNING=0
 # Dự đoán dung lượng cần sao lưu
+WARNING=0
+TOTAL_BACKUP_SIZE_MB=0
+FREE_DISK_SPACE=0
 check_backup_disk_space() {
-  local TOTAL_BACKUP_SIZE=0
-
   for DB in $DATABASES; do
     TABLE_SIZES=$(mysql -u$MYSQL_USER $DB -e "SHOW TABLE STATUS;" | awk '{sum += $7} END {print sum}')
     TOTAL_BACKUP_SIZE=$((TOTAL_BACKUP_SIZE + TABLE_SIZES))
   done
 
   # Chuyển đổi từ KB sang MB
-  local TOTAL_BACKUP_SIZE_MB=$((TOTAL_BACKUP_SIZE / 1024 / 1024))
+  TOTAL_BACKUP_SIZE_MB=$((TOTAL_BACKUP_SIZE / 1024 / 1024))
 
   # Tính nén gz 10% 20% 30% 40% 50% 60% 70% 80%
   PERCENTAGE=87
-  local TOTAL_BACKUP_SIZE_MB=$((TOTAL_BACKUP_SIZE_MB - (TOTAL_BACKUP_SIZE_MB * PERCENTAGE / 100)))
+  TOTAL_BACKUP_SIZE_MB=$((TOTAL_BACKUP_SIZE_MB - (TOTAL_BACKUP_SIZE_MB * PERCENTAGE / 100)))
 
   # Đo dung lượng trống còn lại trên ổ
-  local FREE_DISK_SPACE=$(df -BG "$BACKUP_DIR" | grep -v Filesystem | awk '{print $4}' | tr -d 'G')
+  FREE_DISK_SPACE=$(df -BG "$BACKUP_DIR" | grep -v Filesystem | awk '{print $4}' | tr -d 'G')
 
   # Chuyển đổi từ GB sang MB
-  local FREE_DISK_SPACE_MB=$((FREE_DISK_SPACE * 1024))
+  FREE_DISK_SPACE_MB=$((FREE_DISK_SPACE * 1024))
 
   # So sánh và thực hiện hành động nếu cần
   if [ $TOTAL_BACKUP_SIZE_MB -gt $FREE_DISK_SPACE_MB ]; then
@@ -200,7 +200,6 @@ echo "Log written to: $LOG_FILE"
 TOTAL_DATABASES=$(echo "$DATABASES" | wc -l)
 TOTAL_SUCCESS=$(echo -e "$SUCCESSFUL_BACKUPS" | grep -c ".sql.gz")
 TOTAL_FAILED=$(echo -e "$FAILED_BACKUPS" | grep -c "Backup failed")
-TOTAL_BACKUP_SIZE=$(du -ch "$BACKUP_DIR" | grep total | awk '{print $1}')
 
 # Hiển thị và ghi log
 log_notice ""
@@ -208,7 +207,8 @@ log_notice "Summary:"
 log_notice "$(date +'%Y-%m-%d %H:%M:%S') - Total databases: $TOTAL_DATABASES"
 log_notice "$(date +'%Y-%m-%d %H:%M:%S') - Successful backups: $TOTAL_SUCCESS"
 log_notice "$(date +'%Y-%m-%d %H:%M:%S') - Failed backups: $TOTAL_FAILED"
-log_notice "$(date +'%Y-%m-%d %H:%M:%S') - Total backup size: $TOTAL_BACKUP_SIZE"
+log_notice "$(date +'%Y-%m-%d %H:%M:%S') - Total backup size: ${TOTAL_BACKUP_SIZE_MB}MB"
+log_notice "$(date +'%Y-%m-%d %H:%M:%S') - Remaining disk space: $((FREE_DISK_SPACE_MB - TOTAL_BACKUP_SIZE_MB))MB"
 
 # Gửi email hoặc đính kèm ATTACHMENT_FILES
 if [ -f "$CONFIG_MAIL" ]; then
