@@ -201,6 +201,12 @@ TOTAL_DATABASES=$(echo "$DATABASES" | wc -l)
 TOTAL_SUCCESS=$(echo -e "$SUCCESSFUL_BACKUPS" | grep -c ".sql.gz")
 TOTAL_FAILED=$(echo -e "$FAILED_BACKUPS" | grep -c "Backup failed")
 
+
+# Chạy các lệnh bên trong file
+chown -R root:root $BACKUP_DIR*
+find $BACKUP_DIR* -type f -exec chmod 400 {} \;
+find $BACKUP_DIR* -type d -exec chmod 700 {} \;
+
 # Hiển thị và ghi log
 log_notice ""
 log_notice "Summary:"
