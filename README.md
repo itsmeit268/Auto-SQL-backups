@@ -1,7 +1,7 @@
 # SQL Backup Tool for Linux
 A tool for automating SQL database backups and sending email notifications with attachments.
 
-![Auto Backup SQL](https://itsmeit.co/wp-content/uploads/2025/01/auto-back-up-sql.png)
+![Auto Backup SQL](https://itsmeit.co/wp-content/uploads/2025/01/auto-sql-backups.png)
 
 ## Requirements:
 - **Linux** or Linux-based distributions
@@ -9,13 +9,6 @@ A tool for automating SQL database backups and sending email notifications with 
 
 ## Installation:
 
-### Manual Installation
-1. Download the `bk-sqls` file.
-2. Customize the configuration (e.g., backup path, email settings, etc.).
-3. Upload the `bk-sqls` file to `/etc/cron.daily`.
-4. Set execute permission: `sudo chmod +x /etc/cron.daily/bk-sqls`
-
-### Automated Installation
 1. Download and extract the ZIP file.
 2. Navigate to the extracted directory and set execute permission for the installer:
    `sudo chmod +x install.sh`
@@ -24,7 +17,7 @@ A tool for automating SQL database backups and sending email notifications with 
 
 ## Test Script
 - After completing the setup, you can test the script by running the following command in the terminal:
-  `sudo /etc/cron.daily/bk-sqls`
+  `sudo runsqlbackup`
 
 ## Database Restoration
 - The backup file is in the *.sql.gz format. You need to extract it first, then import it into the database to restore the data.
