@@ -196,9 +196,9 @@ echo "/usr/local/bin/runsqlbackup" >>"${CRON_FILE}"
 sudo chmod +x "${CRON_FILE}"
 
 # Chạy các lệnh bên trong file
-#echo "chown -R root:root \$BACKUP_DIR*" >>"${CRON_FILE}"
-#echo "find \$BACKUP_DIR* -type f -exec chmod 400 {} \;" >>"${CRON_FILE}"
-#echo "find \$BACKUP_DIR* -type d -exec chmod 700 {} \;" >>"${CRON_FILE}"
+echo "chown -R root:root \$BACKUP_DIR*" >>"${CRON_FILE}"
+echo "find \$BACKUP_DIR* -type f -exec chmod 400 {} \;" >>"${CRON_FILE}"
+echo "find \$BACKUP_DIR* -type d -exec chmod 700 {} \;" >>"${CRON_FILE}"
 
 # Cấp quyền cho file vừa tạo
 chmod +x "${CRON_FILE}"
