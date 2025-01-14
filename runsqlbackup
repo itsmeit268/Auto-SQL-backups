@@ -198,9 +198,9 @@ echo "Log written to: $LOG_FILE"
 
 # Đặt quyền cho thư mục sao lưu
 if [ -n "$BACKUP_DIR" ] && [ "$BACKUP_DIR" = "/var/backups/db" ] && [ -d "$BACKUP_DIR" ]; then
-    chown -R root:root "$BACKUP_DIR*"
-    find "$BACKUP_DIR*" -type f -exec chmod 400 {} \;
-    find "$BACKUP_DIR*" -type d -exec chmod 700 {} \;
+    chown -R root:root /var/backups/db*
+    find /var/backups/db/* -type f -exec chmod 400 {} \;
+    find /var/backups/db/* -type d -exec chmod 700 {} \;
 fi
 
 # Tóm tắt kết quả
