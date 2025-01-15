@@ -33,3 +33,4 @@ A tool for automating SQL database backups and sending email notifications with 
 - Email: buivanloi.2010@gmail.com
 - Facebook: https://facebook.com/itsmeit.co
 - Website: https://itsmeit.co/
+- Document: https://itsmeit.co/how-to-auto-backup-mysql-databases-linux/
