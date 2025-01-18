@@ -120,7 +120,10 @@ backup_databases() {
       # Kiểm tra kích thước file để phát hiện lỗi
       if [ -s "$BACKUP_FILE" ]; then
         SUCCESSFUL_BACKUPS="$SUCCESSFUL_BACKUPS\n[$backup_type] $BACKUP_FILE"
-        ATTACHMENT_FILES="$ATTACHMENT_FILES $BACKUP_FILE"  # Thêm vào danh sách các tệp đính kèm
+        # Chỉ thêm tệp sao lưu của ngày hiện tại vào danh sách đính kèm
+        if [[ "$backup_type" == "Daily" && "$backup_dir" == "$BACKUP_DIR/daily" ]]; then
+          ATTACHMENT_FILES="$ATTACHMENT_FILES $BACKUP_FILE"
+        fi
         echo "$(date +'%H:%M:%S') - [$backup_type] $DB -> $BACKUP_FILE"
         echo "$(date +'%Y-%m-%d %H:%M:%S') - [$backup_type] $DB -> $BACKUP_FILE" >>"$LOG_FILE"
       else
