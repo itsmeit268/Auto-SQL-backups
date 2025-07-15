@@ -22,7 +22,11 @@ mkdir -p $BACKUP_DIR
 DATE=$(date +%d-%m-%Y)
 DAY_NAME=$(date +%A)
 DAY_OF_WEEK=$(date +%u)  # Ngày trong tuần (1 = Thứ 2, 7 = Chủ nhật)
-LOG_FILE="$BACKUP_DIR/backup_log_$DATE.log"
+
+# Tạo thư mục log
+LOG_DIR="$BACKUP_DIR/logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/backup_log_$DATE.log"
 
 # Lấy sử dụng mật khẩu SQL
 export MYSQL_PWD=$MYSQL_PASSWORD
@@ -120,10 +124,12 @@ backup_databases() {
       # Kiểm tra kích thước file để phát hiện lỗi
       if [ -s "$BACKUP_FILE" ]; then
         SUCCESSFUL_BACKUPS="$SUCCESSFUL_BACKUPS\n[$backup_type] $BACKUP_FILE"
+        
         # Chỉ thêm tệp sao lưu của ngày hiện tại vào danh sách đính kèm
         if [[ "$backup_type" == "Daily" && "$backup_dir" == "$BACKUP_DIR/daily" ]]; then
           ATTACHMENT_FILES="$ATTACHMENT_FILES $BACKUP_FILE"
         fi
+
         echo "$(date +'%H:%M:%S') - [$backup_type] $DB -> $BACKUP_FILE"
         echo "$(date +'%Y-%m-%d %H:%M:%S') - [$backup_type] $DB -> $BACKUP_FILE" >>"$LOG_FILE"
       else
@@ -228,3 +234,4 @@ else
   log_notice "Mail not sent because the configuration file could not be found: $CONFIG_MAIL"
 fi
 
+find "$LOG_DIR" -type f -name "*.log" -mtime +60 -exec rm -v {} \; >>"$LOG_FILE"

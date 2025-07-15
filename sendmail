@@ -9,109 +9,128 @@ fi
 
 source "$CONFIG_FILE"
 
-# Kiểm tra các dịch vụ email
-EMAIL_SERVICE_INSTALLED=false
+# === Hàm tiện ích ===
 is_installed() {
   command -v "$1" >/dev/null 2>&1
 }
 
+supports_mail_attach() {
+  mail -A /dev/null -s "test" --version >/dev/null 2>&1
+  return $?
+}
+
+# === Kiểm tra các dịch vụ email ===
+EMAIL_SERVICE_INSTALLED=false
 if is_installed sendmail || is_installed exim4 || is_installed postfix; then
   EMAIL_SERVICE_INSTALLED=true
 fi
 
-# Kiểm tra /etc/mailname
+# === Thông tin mail mặc định ===
 if [ -f /etc/mailname ]; then
   HOST_MAIL=$(cat /etc/mailname)
 else
   HOST_MAIL=$(hostname -f 2>/dev/null || hostname)
 fi
 
-EMAIL_FROM="noreply@$HOST_MAIL"
+EMAIL_FROM="noreply@${HOST_MAIL}"
+
+# === Cảnh báo nếu thiếu dung lượng ===
 if [ "$WARNING" = 1 ] && [ -n "$EMAIL_TO" ]; then
-    echo -e "Subject: WARNING [SQL Backup]: Disk full - Immediate action required\n\nDear User,\n\nThis is to inform you that the disk space is almost full, and there is not enough space to perform a backup of the database. Please take immediate action to free up space.\n\nThank you,\nSystem Administrator" | mail -s "WARNING: Disk full - Immediate action required" -a "From: $EMAIL_FROM" -a "To: To <$EMAIL_TO>" $EMAIL_TO
-    exit 1
+  echo -e "Subject: WARNING [SQL Backup]: Disk full - Immediate action required\n\nDear User,\n\nThis is to inform you that the disk space is almost full, and there is not enough space to perform a backup of the database. Please take immediate action to free up space.\n\nThank you,\nSystem Administrator" \
+  | mail -s "WARNING: Disk full - Immediate action required" -a "From: $EMAIL_FROM" -a "To: To <$EMAIL_TO>" $EMAIL_TO
+  exit 1
 fi
 
-# Gửi email dựa trên EMAIL_OPTION
+# === Kiểm tra điều kiện gửi email ===
 if [ "$EMAIL_OPTION" = "no_email" ]; then
-  echo ""
-  echo "Email not sent, configuration not allowed."
+  echo -e "\nEmail not sent, configuration not allowed."
   echo "$(date +'%Y-%m-%d %H:%M:%S') - Email not sent, configuration not allowed." >>"$LOG_FILE"
   exit 0
 elif [ -z "${EMAIL_FROM}" ] || [ -z "${EMAIL_TO}" ]; then
-  echo ""
-  echo "Email configuration skipped (EMAIL_FROM or EMAIL_TO is empty)."
+  echo -e "\nEmail configuration skipped (EMAIL_FROM or EMAIL_TO is empty)."
   echo "$(date +'%Y-%m-%d %H:%M:%S') - Email configuration skipped (EMAIL_FROM or EMAIL_TO is empty)." >>"$LOG_FILE"
   exit 0
 elif ! $EMAIL_SERVICE_INSTALLED; then
-  echo ""
-  echo "No email service installed (sendmail, exim4, postfix, etc.). Email not sent."
-  echo "$(date +'%Y-%m-%d %H:%M:%S') - No email service installed (sendmail, exim4, postfix, etc.). Email not sent." >>"$LOG_FILE"
+  echo -e "\nNo email service installed (sendmail, exim4, postfix, etc.). Email not sent."
+  echo "$(date +'%Y-%m-%d %H:%M:%S') - No email service installed. Email not sent." >>"$LOG_FILE"
   exit 0
 fi
 
-# Kiểm tra nếu tệp đính kèm được yêu cầu nhưng không có tệp
+# === Kiểm tra nếu đòi đính kèm nhưng không có file ===
 if [ "$EMAIL_OPTION" = "attachments" ] && [ -z "$ATTACHMENT_FILES" ]; then
-  echo ""
-  echo "No valid attachment files. Email not sent."
+  echo -e "\nNo valid attachment files. Email not sent."
   echo "$(date +'%Y-%m-%d %H:%M:%S') - No valid attachment files. Email not sent." >>"$LOG_FILE"
   exit 0
 fi
 
-# Hàm kiểm tra lệnh mail có hỗ trợ tùy chọn -A hay không
-supports_mail_attach() {
-  test_file=$(mktemp)
-  echo "Test file for attachment" >"$test_file"
-  echo "Test" | mail -A "$test_file" -s "Test Subject" "test@localhost" >/dev/null 2>&1
-  local result=$?
-  rm -f "$test_file"
-  return $result
-}
+# === Kiểm tra giới hạn gửi mail của MTA ===
+MAIL_LIMIT_BYTES=0
+MAIL_AGENT="unknown"
 
-# Xây dựng danh sách file đính kèm
+if is_installed postfix; then
+  MAIL_AGENT="postfix"
+  MAIL_LIMIT_BYTES=$(postconf -h message_size_limit 2>/dev/null || echo 10240000)
+elif is_installed exim || is_installed exim4; then
+  MAIL_AGENT="exim"
+  MAIL_LIMIT_BYTES=10240000  # default
+elif is_installed sendmail; then
+  MAIL_AGENT="sendmail"
+  MAIL_LIMIT_BYTES=10240000  # default
+else
+  MAIL_LIMIT_BYTES=10240000  # fallback
+fi
+
+# === Tính tổng kích thước đính kèm ===
+TOTAL_ATTACH_SIZE=0
+for file in $ATTACHMENT_FILES; do
+  if [ -f "$file" ]; then
+    FILE_SIZE=$(stat -c %s "$file")
+    TOTAL_ATTACH_SIZE=$((TOTAL_ATTACH_SIZE + FILE_SIZE))
+  fi
+done
+
+# === Nếu vượt quá giới hạn thì tắt đính kèm ===
+if [ "$EMAIL_OPTION" = "attachments" ] && [ "$TOTAL_ATTACH_SIZE" -gt "$MAIL_LIMIT_BYTES" ]; then
+  echo -e "\nAttachment size exceeds limit of $MAIL_AGENT ($((MAIL_LIMIT_BYTES / 1024 / 1024))MB). Only sending log."
+  echo "$(date +'%Y-%m-%d %H:%M:%S') - Attachment too large ($((TOTAL_ATTACH_SIZE / 1024 / 1024))MB), exceeds $MAIL_AGENT limit. Sending only log." >>"$LOG_FILE"
+  ATTACHMENT_FILES=""
+  EMAIL_OPTION="no_attachments"
+fi
+
+# === Xây dựng danh sách file đính kèm ===
 ATTACHMENTS=""
 for file in $ATTACHMENT_FILES; do
   if [ -f "$file" ]; then
     ATTACHMENTS="$ATTACHMENTS -A $file"
   else
-    echo ""
-    echo "Attachment file not found: $file"
+    echo -e "\nAttachment file not found: $file"
     echo "$(date +'%Y-%m-%d %H:%M:%S') - Attachment file not found: $file" >>"$LOG_FILE"
   fi
 done
 
-# Gửi email dựa trên EMAIL_OPTION
+# === Gửi email ===
 SUBJECT="MySQL Backup Report - $DATE"
 BODY="MySQL Backup Log - $DATE\n$(cat "$LOG_FILE")"
 
 if [ "$EMAIL_OPTION" = "attachments" ]; then
-  # Gửi email với file đính kèm nếu lệnh mail hỗ trợ -A
   if supports_mail_attach; then
     if [ -n "$ATTACHMENTS" ]; then
-      echo -e "$BODY" | mail -s "$SUBJECT" -a "From: $EMAIL_FROM" $ATTACHMENTS $EMAIL_TO
+      echo -e "$BODY" | mail -s "$SUBJECT" -a "From: $EMAIL_FROM" $ATTACHMENTS "$EMAIL_TO"
       echo "$(date +'%Y-%m-%d %H:%M:%S') - Email sent with all attachments." >>"$LOG_FILE"
-
-      echo ""
-      echo "Email sent with all attachments."
+      echo -e "\nEmail sent with all attachments."
     else
       echo "$(date +'%Y-%m-%d %H:%M:%S') - No valid attachments found. Email not sent." >>"$LOG_FILE"
-
-      echo ""
-      echo "No valid attachments found. Email not sent."
+      echo -e "\nNo valid attachments found. Email not sent."
     fi
   elif is_installed mutt; then
-    echo -e "$BODY" | mutt -s "$SUBJECT" -e "set from=\"$SENDER_NAME <$EMAIL_FROM>\"" -a $ATTACHMENT_FILES -- "$EMAIL_TO"
+    echo -e "$BODY" | mutt -s "$SUBJECT" -e "set from=\"$EMAIL_FROM\"" -a $ATTACHMENT_FILES -- "$EMAIL_TO"
     echo "$(date +'%Y-%m-%d %H:%M:%S') - Email sent with attachments using mutt." >>"$LOG_FILE"
-
-    echo ""
-    echo "Email sent with all attachments."
+    echo -e "\nEmail sent with all attachments."
   else
     echo "$(date +'%Y-%m-%d %H:%M:%S') - Neither mail -A nor mutt available. Email not sent." >>"$LOG_FILE"
   fi
 elif [ "$EMAIL_OPTION" = "no_attachments" ]; then
-  # Gửi email không đính kèm
   echo -e "$BODY" | mail -s "$SUBJECT" -a "From: $EMAIL_FROM" "$EMAIL_TO"
   echo "$(date +'%Y-%m-%d %H:%M:%S') - Email notification has been sent (No attachments)." >>"$LOG_FILE"
-  echo ""
-  echo "Email notification has been sent (No attachments)."
+  echo -e "\nEmail notification has been sent (No attachments)."
 fi
