@@ -31,6 +31,9 @@ LOG_FILE="$LOG_DIR/backup_log_$DATE.log"
 # Lấy sử dụng mật khẩu SQL
 export MYSQL_PWD=$MYSQL_PASSWORD
 
+# Danh sách các table cần bỏ qua (không bao gồm prefix)
+IGNORE_TABLES="itsec_logs itsec_temp itsec_lockouts itsec_distributed_storage itsec_opaque_tokens itsec_geolocation_cache"
+
 # Lấy danh sách database cần sao lưu
 DATABASES=$(mysql -u$MYSQL_USER -e "SHOW DATABASES;" | grep -Ev "(Database|$CONFIG_DB_EXCLUDE)")
 
@@ -106,42 +109,65 @@ ATTACHMENT_FILES=""
 
 # Hàm sao lưu
 backup_databases() {
-  local backup_dir=$1  # Thư mục sao lưu (daily, weekly, monthly)
-  local backup_type=$2 # Loại sao lưu (Daily, Weekly, Monthly)
-
-  echo "Database Backup on $(date +'%Y-%m-%d') - Initiating..."
-  echo ""
-  echo "" >>"$LOG_FILE"
-  echo "=== Auto Backup SQL  $(date +'%Y-%m-%d') ======================================" >>"$LOG_FILE"
-
-  for DB in $DATABASES; do
-    # Tạo thư mục riêng cho từng database
-    DB_BACKUP_DIR="$backup_dir/$DB"
-    mkdir -p "$DB_BACKUP_DIR"
-
-    BACKUP_FILE="$DB_BACKUP_DIR/${DATE}_${DB}_${DAY_NAME}.sql.gz"
-    if mysqldump -u$MYSQL_USER $DB | gzip >"$BACKUP_FILE"; then
-      # Kiểm tra kích thước file để phát hiện lỗi
-      if [ -s "$BACKUP_FILE" ]; then
-        SUCCESSFUL_BACKUPS="$SUCCESSFUL_BACKUPS\n[$backup_type] $BACKUP_FILE"
+    local backup_dir=$1 
+    local backup_type=$2
+    
+    echo "Database Backup on $(date +'%Y-%m-%d') - Initiating..."
+    echo ""
+    echo "" >> "$LOG_FILE"
+    echo "=== Auto Backup SQL $(date +'%Y-%m-%d') ======================================" >> "$LOG_FILE"
+    
+    for DB in $DATABASES; do
+        # Tạo thư mục riêng cho từng database
+        DB_BACKUP_DIR="$backup_dir/$DB"
+        mkdir -p "$DB_BACKUP_DIR"
         
-        # Chỉ thêm tệp sao lưu của ngày hiện tại vào danh sách đính kèm
-        if [[ "$backup_type" == "Daily" && "$backup_dir" == "$BACKUP_DIR/daily" ]]; then
-          ATTACHMENT_FILES="$ATTACHMENT_FILES $BACKUP_FILE"
+        BACKUP_FILE="$DB_BACKUP_DIR/${DATE}_${DB}_${DAY_NAME}.sql.gz"
+        
+        # Xây dựng danh sách các table cần bỏ qua với prefix
+        IGNORE_TABLE_PARAMS=""
+        
+        # Lấy danh sách các table có trong database
+        ALL_TABLES=$(mysql -u$MYSQL_USER $DB -e "SHOW TABLES;" | tail -n +2)
+        
+        # Tìm các table cần bỏ qua (bất kể prefix)
+        for IGNORE_TABLE in $IGNORE_TABLES; do
+            for TABLE in $ALL_TABLES; do
+                # Kiểm tra nếu tên table kết thúc bằng tên table cần bỏ qua
+                if [[ "$TABLE" == *"$IGNORE_TABLE" ]]; then
+                    IGNORE_TABLE_PARAMS="$IGNORE_TABLE_PARAMS --ignore-table=${DB}.${TABLE}"
+                fi
+            done
+        done
+        
+        # Thực hiện backup với các table bị bỏ qua
+        if mysqldump -u$MYSQL_USER $IGNORE_TABLE_PARAMS $DB | gzip > "$BACKUP_FILE"; then
+            # Kiểm tra kích thước file để phát hiện lỗi
+            if [ -s "$BACKUP_FILE" ]; then
+                SUCCESSFUL_BACKUPS="$SUCCESSFUL_BACKUPS\n[$backup_type] $BACKUP_FILE"
+                
+                # Chỉ thêm tệp sao lưu của ngày hiện tại vào danh sách đính kèm
+                if [[ "$backup_type" == "Daily" && "$backup_dir" == "$BACKUP_DIR/daily" ]]; then
+                    ATTACHMENT_FILES="$ATTACHMENT_FILES $BACKUP_FILE"
+                fi
+                
+                echo "$(date +'%H:%M:%S') - [$backup_type] $DB -> $BACKUP_FILE"
+                echo "$(date +'%Y-%m-%d %H:%M:%S') - [$backup_type] $DB -> $BACKUP_FILE" >> "$LOG_FILE"
+                
+                # Ghi log các table đã bỏ qua (nếu có)
+                if [ -n "$IGNORE_TABLE_PARAMS" ]; then
+                    echo "$(date +'%Y-%m-%d %H:%M:%S') -   Ignored tables: $IGNORE_TABLE_PARAMS" >> "$LOG_FILE"
+                fi
+            else
+                FAILED_BACKUPS="$FAILED_BACKUPS\n[$backup_type] $DB - Empty backup file"
+                echo "$(date +'%Y-%m-%d %H:%M:%S') - [$backup_type] Backup failed for database: $DB (empty file)" >> "$LOG_FILE"
+                rm -f "$BACKUP_FILE"
+            fi
+        else
+            FAILED_BACKUPS="$FAILED_BACKUPS\n[$backup_type] $DB - Backup failed"
+            echo "$(date +'%Y-%m-%d %H:%M:%S') - [$backup_type] Backup failed for database: $DB" >> "$LOG_FILE"
         fi
-
-        echo "$(date +'%H:%M:%S') - [$backup_type] $DB -> $BACKUP_FILE"
-        echo "$(date +'%Y-%m-%d %H:%M:%S') - [$backup_type] $DB -> $BACKUP_FILE" >>"$LOG_FILE"
-      else
-        FAILED_BACKUPS="$FAILED_BACKUPS\n[$backup_type] $DB - Empty backup file"
-        echo "$(date +'%Y-%m-%d %H:%M:%S') - [$backup_type] Backup failed for database: $DB (empty file)" >>"$LOG_FILE"
-        rm -f "$BACKUP_FILE"
-      fi
-    else
-      FAILED_BACKUPS="$FAILED_BACKUPS\n[$backup_type] $DB - Backup failed"
-      echo "$(date +'%Y-%m-%d %H:%M:%S') - [$backup_type] Backup failed for database: $DB" >>"$LOG_FILE"
-    fi
-  done
+    done
 }
 
 # Sao lưu hàng ngày
